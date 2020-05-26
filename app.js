@@ -22,10 +22,10 @@ app.post("/event-schedule", db.createSchedule);
 
 //Round 2
 app.post("/working-hours/:trainerId", db.addWorkingHours);
-//app.post("/service", db.createService);
+app.post("/event-group", db.createEventGroup);
 app.get("/trainer/:trainerId", db.getTrainerById);
 app.post("/trainer", db.createTrainer);
-//app.post("/trainer-service".db.addServiceToTrainer);
+app.post("/trainer-ability/:trainerId", db.addAbilityToTrainer);
 
 app.listen(port, () => {
   console.log(`App running on port ${port}.`);

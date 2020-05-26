@@ -1,11 +1,12 @@
 const { v4: uuidv4 } = require("uuid");
 const Pool = require("pg").Pool;
+const helpers = require("./helpers");
 
 const pool = new Pool({
   user: "me",
   host: "localhost",
   database: "events",
-  password: "******",
+  password: "testtest123",
   port: 5432,
 });
 
@@ -13,6 +14,17 @@ const pool = new Pool({
 function getTrainer(trainerId) {
   const queryString = "SELECT * FROM Trainers where TrainerId = $1";
   const values = [trainerId];
+  return new Promise((resolve, reject) => {
+    pool
+      .query(queryString, values)
+      .then((res) => resolve(res))
+      .catch((err) => reject(err));
+  });
+}
+
+function getEventGroup(eventGroupId) {
+  const queryString = "SELECT * FROM EventGroups where EventGroupId = $1";
+  const values = [eventGroupId];
   return new Promise((resolve, reject) => {
     pool
       .query(queryString, values)
@@ -45,7 +57,7 @@ const createTrainer = (request, response) => {
 };
 
 const addWorkingHours = (request, response) => {
-  const WorkingHoursID = uuidv4();
+  const WorkingHoursId = uuidv4();
   const TrainerId = request.params.trainerId;
   const StartDateUtc = request.body.startDateUtc;
   const EndDateUtc = request.body.endDateUtc;
@@ -53,7 +65,7 @@ const addWorkingHours = (request, response) => {
   const IsRecurring = true;
   const RecurrencePattern = request.body.recurrencePattern;
   values = [
-    WorkingHoursID,
+    WorkingHoursId,
     TrainerId,
     StartDateUtc,
     EndDateUtc,
@@ -84,56 +96,84 @@ const addWorkingHours = (request, response) => {
     });
 };
 
-/* TO ADD 
+const createEventGroup = (request, response) => {
+  const EventGroupId = uuidv4();
+  const Name = request.body.name;
+  const InstanceDuration = request.body.instanceDuration;
+  const Intervals = request.body.intervals;
+  const PrepTime = request.body.prepTime;
+  const AfterTime = request.body.afterTime;
+  const Description = request.body.description;
+  const Archived = false;
+  const Deleted = false;
+  const AvailableSpots = request.body.availableSpots;
 
-app.post("/service", db.createService);
-app.post("/trainer", db.createTrainer);
-app.post("/trainer-service".db.addServiceToTrainer);
-/*
+  values = [
+    EventGroupId,
+    Name,
+    InstanceDuration,
+    Intervals,
+    PrepTime,
+    AfterTime,
+    Description,
+    Archived,
+    Deleted,
+    AvailableSpots,
+  ];
 
-/*
-const getEventSchedules = (request, response) => {
-  const queryString = "SELECT * FROM EventSchedules ORDER BY CreatedDate DESC";
-  pool.query(queryString, (err, results) => {
+  const queryString =
+    "INSERT INTO EventGroups" +
+    "(EventGroupId, Name, InstanceDuration, Intervals, PrepTime, AfterTime, Description, Archived, Deleted, AvailableSpots)" +
+    "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)";
+  pool.query(queryString, values, (err, res) => {
     if (err) {
       throw err;
     }
-    response.status(200).json(results.rows);
+    response.status(200).send("Record Entered");
   });
 };
 
-const getEventScheduleById = (request, response) => {
-  const esid = request.params.eventscheduleid;
-  const queryString = "SELECT * FROM EventSchedules WHERE ID = '" + esid + "'";
-  pool.query(queryString, (error, results) => {
-    if (error) {
-      throw error;
-    }
-    response.status(200).json(results.rows);
-  });
+const addAbilityToTrainer = (request, response) => {
+  const TrainerId = request.params.trainerId;
+  const EventGroupId = request.body.eventGroupId;
+
+  values = [EventGroupId, TrainerId];
+
+  //First we check if the trainer exists.
+  getTrainer(TrainerId)
+    .then((res) => {
+      if (res.rowCount > 0) {
+        //Then we check if the EventGroup exists.
+        getEventGroup(EventGroupId).then((res) => {
+          if (res.rowCount > 0) {
+            //If both exist we insert the record.
+            const queryString =
+              "INSERT INTO TrainerAbilities" +
+              "(EventGroupId, TrainerId)" +
+              "VALUES ($1, $2)";
+            pool.query(queryString, values, (err, res) => {
+              if (err) {
+                throw err;
+              }
+              response.status(200).send("Record Entered");
+            });
+          } else {
+            response.status(404).send("EventGroup not Found");
+          }
+        });
+      } else {
+        response.status(404).send("Trainer not Found");
+      }
+    })
+    .catch((err) => {
+      response.status(400).send(err);
+    });
 };
-
-const createSchedule = (request, response) => {
-  const { RRULE } = request.body;
-  const scheduleUUID = uuidv4();
-  values = [RRULE, scheduleUUID];
-  const queryString =
-    "INSERT INTO EventSchedules (ID, timestamp, RRULE,CreatedDate, ModifiedDate) VALUES ($1,NOW(),$2, NOW(),NOW())";
-
-  pool.query(queryString, values, (error, result) => {
-    if (error) {
-      throw error;
-    }
-    response.status(200).send(`User added with ID: ${result}`);
-  });
-};*/
 
 module.exports = {
   addWorkingHours,
   getTrainerById,
   createTrainer,
-  /*
-  getEventSchedules,
-  getEventScheduleById,
-  createSchedule,*/
+  createEventGroup,
+  addAbilityToTrainer,
 };
